@@ -1,29 +1,52 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.17.0
 
-FROM python:3.11-slim AS runtime
-
+############################
+# Base
+############################
+FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Optional: tools to compile wheels if prebuilt ones are unavailable
+############################
+# Builder: ставим зависимости через PDM в .venv
+############################
+FROM base AS builder
+
+# Пакеты для сборки колёс (если есть C-расширения)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       build-essential \
+    && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# PDM
+RUN pip install --no-cache-dir -U pip setuptools wheel pdm
 
 WORKDIR /app
 
-# Install Python dependencies first for better layer caching
-COPY requirements.txt ./
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
+# Для кэшируемой сборки копируем манифесты зависимостей
+COPY pyproject.toml pdm.lock ./
 
-# Copy the application code
+# PDM — в локальное .venv
+ENV PDM_HOME=/opt/pdm \
+    PDM_USE_VENV=true \
+    PDM_VENV_IN_PROJECT=true
+
+# Устанавливаем только prod-зависимости (используем кэши BuildKit)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/pdm \
+    pdm install --prod --no-editable --frozen-lockfile
+
+############################
+# Runtime: минимальный слой с готовым .venv и кодом
+############################
+FROM base AS runtime
+WORKDIR /app
+
+# Переносим готовое виртуальное окружение
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:${PATH}"
+
+# Копируем приложение
 COPY . .
 
-# The bot reads TOKEN, AUTH_GIGA, and optional PROXY_URL from env or .env
-# Provide them via --env/--env-file at runtime. No ports need to be exposed for long polling.
-
+# Бот читает TOKEN, AUTH_GIGA и (опционально) PROXY_URL из env (--env/--env-file)
 CMD ["python", "bot.py"]
-
-
