@@ -10,7 +10,6 @@ RUN apt-get update \
 RUN pip install --no-cache-dir -U pip setuptools wheel pdm
 WORKDIR /app
 
-# Копируем манифесты зависимостей (lock — опционально)
 COPY pyproject.toml ./
 COPY pdm.lock* ./
 
@@ -18,7 +17,9 @@ ENV PDM_HOME=/opt/pdm \
     PDM_USE_VENV=true \
     PDM_VENV_IN_PROJECT=true
 
-# Если есть pdm.lock — используем его, иначе ставим по pyproject.toml
+# Привязываем PDM к системному Python 3.11 (создаст .pdm-python)
+RUN pdm use -f /usr/local/bin/python
+
 RUN if [ -f pdm.lock ]; then \
       pdm install --prod --no-editable --frozen-lockfile; \
     else \
@@ -27,11 +28,7 @@ RUN if [ -f pdm.lock ]; then \
 
 FROM base AS runtime
 WORKDIR /app
-
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:${PATH}"
-
 COPY . .
-
-# TOKEN, AUTH_GIGA и (опц.) PROXY_URL передавай через --env/--env-file
 CMD ["python", "bot.py"]
