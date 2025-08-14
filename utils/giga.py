@@ -127,7 +127,8 @@ def process_card(card, dialog_text: str, idx: int, total: int) -> tuple[dict | N
         "title": card["title"],
         "hypotheses": card["hypotheses"],
         "actions": card["actions"],
-        "questions": questions_cleaned
+        "questions": questions_cleaned,
+        "reason": relevance_response_full,
     }
     explanation = {
         "title": card["title"],
@@ -181,5 +182,3 @@ def select_relevant_hypotheses(dialog_text: str, all_cards: list[dict], user_id:
 
 # ВАЖНО: только теперь назначаем атрибут
 select_relevant_hypotheses.last_results = {}
-
-

@@ -66,6 +66,7 @@ async def handle_docx(m: Message):
 
     for idx, card in enumerate(selected):
         qs_md = "\n".join(f"{i+1}. {q}" for i, q in enumerate(card["questions"]))
+        reason = card.get("reason") or ""
 
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -78,7 +79,8 @@ async def handle_docx(m: Message):
             ]
         )
 
-        await m.answer(f"💡 *{card['title']}*\n\n{qs_md}", parse_mode="Markdown", reply_markup=kb)
+        text = f"💡 *{card['title']}*\n\n_Почему релевантна:_ {reason}\n\n{qs_md}" if reason else f"💡 *{card['title']}*\n\n{qs_md}"
+        await m.answer(text, parse_mode="Markdown", reply_markup=kb)
 
 
 # ─── «Подтвердить» ─────────────────────────────────────────────────────────
@@ -104,9 +106,9 @@ async def confirm(cb: CallbackQuery):
     user_confirmed_cards[uid].add(idx)
 
     qs_md = "\n".join(f"{i+1}. {q}" for i, q in enumerate(card["questions"]))
-    await cb.message.answer(
-        f"☑️ *Подтверждено:* *{card['title']}*\n\n{qs_md}", parse_mode="Markdown"
-    )
+    reason = card.get("reason") or ""
+    text = f"☑️ *Подтверждено:* *{card['title']}*\n\n_Почему релевантна:_ {reason}\n\n{qs_md}" if reason else f"☑️ *Подтверждено:* *{card['title']}*\n\n{qs_md}"
+    await cb.message.answer(text, parse_mode="Markdown")
     await cb.answer()   # убираем «часики»
 
 
