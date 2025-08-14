@@ -54,3 +54,5 @@ def build_relevance_prompt(card_title: str, dialog_text: str) -> str:
 Бота не хостил, запускается python bot.py
 
 Токен бота и гигачата скинул в телеге
+
+2025-14-08
